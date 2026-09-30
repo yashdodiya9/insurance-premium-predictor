@@ -1,0 +1,4 @@
+# Everything needed to run the tests locally with pip.
+-r requirements.txt
+pytest
+httpx

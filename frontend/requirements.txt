@@ -1,0 +1,3 @@
+# Dependencies for deploying the Streamlit frontend (e.g. on Streamlit Community Cloud).
+streamlit
+requests

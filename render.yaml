@@ -1,0 +1,7 @@
+# Render Blueprint: deploys the FastAPI service from the Dockerfile in this repo.
+services:
+  - type: web
+    name: insurance-premium-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health

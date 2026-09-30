@@ -1,0 +1,12 @@
+pydantic
+email-validator
+
+fastapi
+uvicorn
+
+streamlit
+requests
+
+ipykernel
+scikit-learn
+pandas

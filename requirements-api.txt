@@ -1,0 +1,11 @@
+# Runtime dependencies for the API container (no Streamlit / notebooks).
+# Versions are pinned to match uv.lock. scikit-learn in particular must match the
+# version used to train model.pkl, or unpickling can warn or fail.
+fastapi==0.141.1
+uvicorn==0.54.0
+pydantic==2.13.5
+email-validator==2.3.0
+scikit-learn==1.9.1
+pandas==3.0.6
+numpy==2.5.3
+scipy==1.18.1

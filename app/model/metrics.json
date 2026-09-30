@@ -1,0 +1,92 @@
+{
+  "trained_at": "2026-09-29T16:18:24+00:00",
+  "sklearn_version": "1.9.1",
+  "n_rows": 100,
+  "class_counts": {
+    "Low": 34,
+    "High": 33,
+    "Medium": 33
+  },
+  "selected_model": "Logistic Regression",
+  "cv": {
+    "folds": 5,
+    "repeats": 3,
+    "results": [
+      {
+        "model": "Logistic Regression",
+        "accuracy_mean": 0.725,
+        "accuracy_std": 0.05,
+        "precision_macro_mean": 0.7435802469135804,
+        "precision_macro_std": 0.053185567206700424,
+        "recall_macro_mean": 0.7288888888888887,
+        "recall_macro_std": 0.0511272116347775,
+        "f1_macro_mean": 0.7194409294409295,
+        "f1_macro_std": 0.05279306472734193
+      },
+      {
+        "model": "Random Forest",
+        "accuracy_mean": 0.6916666666666667,
+        "accuracy_std": 0.07383352144445564,
+        "precision_macro_mean": 0.7134391534391534,
+        "precision_macro_std": 0.080877113399251,
+        "recall_macro_mean": 0.6948148148148147,
+        "recall_macro_std": 0.07771072947794608,
+        "f1_macro_mean": 0.6860784894118227,
+        "f1_macro_std": 0.07419830822196374
+      },
+      {
+        "model": "Gradient Boosting",
+        "accuracy_mean": 0.5875,
+        "accuracy_std": 0.07839536550927824,
+        "precision_macro_mean": 0.6410974827641494,
+        "precision_macro_std": 0.09364626101809731,
+        "recall_macro_mean": 0.5955555555555555,
+        "recall_macro_std": 0.08041046960066314,
+        "f1_macro_mean": 0.5862165612165612,
+        "f1_macro_std": 0.07484389034233183
+      },
+      {
+        "model": "Baseline (most frequent class)",
+        "accuracy_mean": 0.3125,
+        "accuracy_std": 0.0,
+        "precision_macro_mean": 0.1041666666666667,
+        "precision_macro_std": 2.7755575615628914e-17,
+        "recall_macro_mean": 0.33333333333333326,
+        "recall_macro_std": 5.551115123125783e-17,
+        "f1_macro_mean": 0.15873015873015867,
+        "f1_macro_std": 5.551115123125783e-17
+      }
+    ]
+  },
+  "test": {
+    "n_rows": 20,
+    "accuracy": 0.8,
+    "precision_macro": 0.794973544973545,
+    "recall_macro": 0.7857142857142857,
+    "f1_macro": 0.7773809523809524,
+    "confusion_matrix": {
+      "labels": [
+        "High",
+        "Low",
+        "Medium"
+      ],
+      "matrix": [
+        [
+          7,
+          0,
+          0
+        ],
+        [
+          0,
+          6,
+          1
+        ],
+        [
+          2,
+          1,
+          3
+        ]
+      ]
+    }
+  }
+}

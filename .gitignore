@@ -1,0 +1,54 @@
+# --- Secrets: never commit these ---
+*.pem
+*.key
+.env
+.env.*
+secrets.toml
+.streamlit/secrets.toml
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Package build artifacts ---
+build/
+dist/
+*.egg-info/
+*.egg
+
+# --- Testing / coverage ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# --- Type checkers / linters ---
+.mypy_cache/
+.ruff_cache/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- uv ---
+# Note: uv.lock SHOULD be committed (it pins your dependency versions).
+# This only ignores uv's local cache, not the lockfile.
+.uv-cache/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log

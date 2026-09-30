@@ -48,7 +48,6 @@ The frontend reads the API's address from an `API_URL` secret/environment variab
 ├── train.py                         # Trains, compares and exports the model
 ├── frontend/app.py                  # Streamlit UI (points at API_URL)
 ├── tests/                           # pytest test suite
-├── notebooks/ML_FastAPI.ipynb       # Original exploration notebook
 ├── data/insurance.csv               # Training data
 ├── Dockerfile / .dockerignore       # Container image for the API
 ├── render.yaml                      # Render deployment blueprint (alternative to EC2)

@@ -1,6 +1,6 @@
 # Insurance Premium Category Predictor
 
-A machine learning API that predicts whether a customer falls into a **Low**, **Medium** or **High** insurance premium category, based on a few personal and lifestyle details. The model is served with **FastAPI**, packaged with **Docker**, and comes with a **Streamlit** web app for trying it out.
+A machine learning API that predicts whether a customer falls into a **Low**, **Medium** or **High** insurance premium category, based on a few personal and lifestyle details. The model is served with **FastAPI**, deployed on **AWS (EC2)**, and paired with a **Streamlit** frontend deployed on **Streamlit Community Cloud** that calls the live API.
 
 ## Features
 
@@ -11,12 +11,24 @@ A machine learning API that predicts whether a customer falls into a **Low**, **
 - **Model comparison with cross-validation**: `train.py` compares four models (including a naive baseline) and reports accuracy, precision, recall and F1
 - **Typed responses**: predicted category, confidence, and the probability of every class
 - **Health endpoint** reporting API status, model version and whether the model is loaded
-- **Automated tests** with pytest, a **Dockerfile**, and a **Render** blueprint for deployment
-- **Streamlit frontend** that shows the prediction, confidence and a probability chart
+- **Automated tests** with pytest, a **Dockerfile**, and deployment to AWS EC2 (API) and Streamlit Community Cloud (frontend)
+- **Streamlit frontend** that shows the prediction, confidence and a probability chart, pointed at the live API via a configurable `API_URL`
 
 ## Tech stack
 
-Python 3.12 · FastAPI · Pydantic v2 · scikit-learn · pandas · Streamlit · pytest · Docker · uv
+Python 3.12 · FastAPI · Pydantic v2 · scikit-learn · pandas · Streamlit · pytest · Docker · AWS EC2 · Streamlit Community Cloud · uv
+
+## Architecture
+
+```
+┌─────────────────────────────┐         HTTPS          ┌──────────────────────────────┐
+│   Streamlit Community Cloud │ ───────────────────────▶│         AWS EC2               │
+│   frontend/app.py           │   POST /predict          │   FastAPI + Docker container  │
+│   (public URL)               │◀───────────────────────│   scikit-learn model (.pkl)   │
+└─────────────────────────────┘      JSON response       └──────────────────────────────┘
+```
+
+The frontend reads the API's address from an `API_URL` secret/environment variable (see `frontend/app.py`), so the same code runs against a local API during development and the deployed API in production, with no code changes.
 
 ## Project structure
 
@@ -34,17 +46,27 @@ Python 3.12 · FastAPI · Pydantic v2 · scikit-learn · pandas · Streamlit · 
 │       ├── model.pkl                # Trained scikit-learn pipeline (created by train.py)
 │       └── metrics.json             # Cross-validation and test results (created by train.py)
 ├── train.py                         # Trains, compares and exports the model
-├── frontend/app.py                  # Streamlit UI
+├── frontend/app.py                  # Streamlit UI (points at API_URL)
 ├── tests/                           # pytest test suite
 ├── notebooks/ML_FastAPI.ipynb       # Original exploration notebook
 ├── data/insurance.csv               # Training data
 ├── Dockerfile / .dockerignore       # Container image for the API
-├── render.yaml                      # Render deployment blueprint
+├── render.yaml                      # Render deployment blueprint (alternative to EC2)
 ├── pyproject.toml / uv.lock         # Dependencies (uv)
 └── requirements*.txt                # pip-compatible dependency lists
 ```
 
-## Getting started
+## 🔗 Live demo
+
+- **App**: <https://your-app-name.streamlit.app> — try it in your browser, no setup needed
+- **API docs**: <http://13.60.16.138:8000/docs> — interactive Swagger UI
+- **API health check**: <http://13.60.16.138:8000/health>
+
+The deployed Streamlit app talks to the deployed API over the internet — it is not running locally and does not fall back to localhost. This is a fully hosted, end-to-end deployment, not just a local demo.
+
+> **Note:** the API is served over plain HTTP on a specific port rather than a domain with HTTPS. This is a deliberate simplification for a portfolio project — see [Limitations](#limitations).
+
+## Running it locally
 
 ### 1. Install dependencies
 
@@ -64,12 +86,8 @@ pip install -r requirements.txt
 
 ### 2. Start the API
 
-Run this from the project root:
-
 ```bash
 uv run uvicorn app.main:app --reload
-# or, without uv:
-uvicorn app.main:app --reload
 ```
 
 The API is now at http://127.0.0.1:8000 and the interactive docs are at http://127.0.0.1:8000/docs.
@@ -80,11 +98,13 @@ In a second terminal:
 
 ```bash
 uv run streamlit run frontend/app.py
-# or, without uv:
-streamlit run frontend/app.py
 ```
 
-By default it talks to `http://127.0.0.1:8000`. To point it at another API, set the `API_URL` environment variable (or the `API_URL` Streamlit secret).
+By default it talks to `http://127.0.0.1:8000`. To point it at the deployed API (or any other API) instead, set `API_URL`:
+
+```bash
+API_URL=http://13.60.16.138:8000 uv run streamlit run frontend/app.py
+```
 
 ## Training and evaluation
 
@@ -92,7 +112,6 @@ Train (or retrain) the model with:
 
 ```bash
 uv run python train.py
-# options: --data data/insurance.csv --output app/model/model.pkl --cv-repeats 3 --seed 42
 ```
 
 The script:
@@ -102,8 +121,6 @@ The script:
 3. Compares four models with 5-fold cross-validation repeated 3 times on the remaining data.
 4. Picks the model with the best cross-validated macro F1 and evaluates it once on the test set.
 5. Refits the chosen model on all the data, saves it to `app/model/model.pkl`, and writes all results to `app/model/metrics.json`.
-
-To train on your own data, pass `--data` with a CSV that has the same columns as `data/insurance.csv`.
 
 ### Results on the included dataset
 
@@ -118,15 +135,12 @@ Cross-validation on the training split (mean over 15 folds; precision, recall an
 
 On the 20-row held-out test set the selected model scored 0.80 accuracy and 0.78 macro F1.
 
-**How to read these numbers:** every real model clearly beats the baseline, but the dataset has only 100 rows, so fold-to-fold scores vary by about 5 to 8 percentage points. The gap between Logistic Regression and Random Forest is smaller than that variation, so treat the ranking of those two as inconclusive. An earlier version of this project reported 85% accuracy from a single 20-row split; cross-validation shows that figure was optimistic.
+**How to read these numbers:** every real model clearly beats the baseline, but the dataset has only 100 rows, so fold-to-fold scores vary by about 5 to 8 percentage points. The gap between Logistic Regression and Random Forest is smaller than that variation, so treat the ranking of those two as inconclusive.
 
 ## Running the tests
 
 ```bash
 uv run pytest
-# or, with pip:
-pip install -r requirements-dev.txt
-pytest
 ```
 
 The suite covers the feature-engineering rules (including boundary values), the model's output shape and probabilities, the training pipeline end to end, and the API (success, validation errors, and the generic 500 response).
@@ -140,28 +154,21 @@ docker build -t insurance-api .
 docker run --rm -p 8000:8000 insurance-api
 ```
 
-Then open http://127.0.0.1:8000/docs. The image installs only the API's runtime dependencies (`requirements-api.txt`), runs as a non-root user, and includes a health check.
+This is the same image running on the deployed EC2 instance.
 
 ## Deployment
 
-### API on Render
+### API — AWS EC2
 
-1. Push this project to GitHub (make sure `app/model/model.pkl` is committed).
-2. In the Render dashboard choose **New > Blueprint**, connect the repository, and apply. Render reads `render.yaml` and builds the Dockerfile. (Alternatively: **New > Web Service** and pick the Docker runtime.)
-3. When the deploy finishes, open `https://<your-service>.onrender.com/health` and `/docs`.
+The FastAPI service runs in a Docker container on an EC2 instance, exposed on port 8000. The instance's security group allows inbound traffic on that port so the deployed Streamlit app (and anyone else) can reach it.
 
-On Render's free plan the service spins down after about 15 minutes without traffic, so the first request after a pause can take up to a minute.
+### Frontend — Streamlit Community Cloud
 
-### Frontend on Streamlit Community Cloud
+The Streamlit app is deployed directly from this GitHub repository, with `frontend/app.py` as the entry point. Its `API_URL` is set as a Streamlit secret pointing at the EC2 API above, so the live app always calls the live API — never localhost.
 
-1. On [share.streamlit.io](https://share.streamlit.io) create a new app from the repository with `frontend/app.py` as the main file.
-2. Under **Advanced settings > Secrets**, add:
+### Alternative: Render
 
-   ```toml
-   API_URL = "https://<your-service>.onrender.com"
-   ```
-
-3. Deploy. The app's dependencies come from `frontend/requirements.txt`.
+`render.yaml` is also included as a Docker-based deployment option for the API (e.g. as a simpler, HTTPS-by-default alternative to EC2).
 
 ## API reference
 
@@ -188,7 +195,7 @@ On Render's free plan the service spins down after about 15 minutes without traf
 **Example**
 
 ```bash
-curl -X POST http://127.0.0.1:8000/predict \
+curl -X POST http://13.60.16.138:8000/predict \
   -H "Content-Type: application/json" \
   -d '{
     "age": 30,
@@ -215,8 +222,6 @@ curl -X POST http://127.0.0.1:8000/predict \
 }
 ```
 
-The exact probabilities depend on the model currently saved in `app/model/model.pkl`; the shape of the response is always the same.
-
 **Errors**
 
 | Status | Meaning                                                                          |
@@ -239,9 +244,9 @@ These features, together with `income_lpa` and `occupation`, go into a scikit-le
 
 ## Limitations
 
-- The training set is a small sample of 100 rows, so this project demonstrates building, evaluating and serving an ML model; it is not a production-grade pricing model.
+- The training set is a small sample of 100 rows, so this project demonstrates building, evaluating, and deploying an ML service end to end; it is not a production-grade pricing model.
+- The deployed API is served over plain HTTP on port 8000 from an EC2 instance's public IP, not HTTPS on a custom domain. Adding a domain, an nginx reverse proxy and a Let's Encrypt certificate (or an AWS Application Load Balancer with an ACM certificate) would be the next step toward a production setup.
 - `model.pkl` is a pickle file. Only load pickles you trust, and keep the scikit-learn version the same as in `uv.lock` / `requirements-api.txt` (currently 1.9.1). If you upgrade scikit-learn, retrain with `train.py`.
-- The notebook in `notebooks/` is the original exploration and still contains its own copy of the feature code; `train.py` is the reference training path.
 
 ## Roadmap
 
@@ -249,8 +254,9 @@ These features, together with `income_lpa` and `occupation`, go into a scikit-le
 - [x] Share feature-engineering code between training and serving
 - [x] Add automated tests (`pytest`)
 - [x] Add a Dockerfile
+- [x] Deploy the API (AWS EC2) and the frontend (Streamlit Community Cloud)
+- [ ] Put the API behind HTTPS with a custom domain
 - [ ] Train and evaluate on a larger dataset
-- [ ] Deploy the API and frontend and add the live links here
 - [ ] Run the tests automatically with GitHub Actions
 
 ## Author

@@ -16,15 +16,15 @@ A machine learning API that predicts whether a customer falls into a **Low**, **
 
 ## Tech stack
 
-Python 3.12 · FastAPI · Pydantic v2 · scikit-learn · pandas · Streamlit · pytest · Docker · AWS EC2 · Streamlit Community Cloud · uv
+Python 3.12, FastAPI, Pydantic v2, scikit-learn, pandas, Streamlit, pytest, Docker, AWS EC2, Streamlit Community Cloud, uv
 
 ## Architecture
 
 ```
-┌─────────────────────────────┐         HTTPS          ┌──────────────────────────────┐
-│   Streamlit Community Cloud │ ───────────────────────▶│         AWS EC2               │
-│   frontend/app.py           │   POST /predict          │   FastAPI + Docker container  │
-│   (public URL)               │◀───────────────────────│   scikit-learn model (.pkl)   │
+┌─────────────────────────────┐         HTTPS            ┌──────────────────────────────┐
+│   Streamlit Community Cloud │ ───────────────────────▶ │         AWS EC2              │
+│   frontend/app.py           │      POST /predict       │   FastAPI + Docker container │
+│   (public URL)              │ ◀─────────────────────── │   scikit-learn model (.pkl)  │
 └─────────────────────────────┘      JSON response       └──────────────────────────────┘
 ```
 
@@ -57,11 +57,11 @@ The frontend reads the API's address from an `API_URL` secret/environment variab
 
 ## 🔗 Live demo
 
-- **App**: <https://your-app-name.streamlit.app> — try it in your browser, no setup needed
+- **App**: <https://insurance-premium-predictor-ysd.streamlit.app/> — try it in your browser, no setup needed
 - **API docs**: <http://13.60.16.138:8000/docs> — interactive Swagger UI
 - **API health check**: <http://13.60.16.138:8000/health>
 
-The deployed Streamlit app talks to the deployed API over the internet — it is not running locally and does not fall back to localhost. This is a fully hosted, end-to-end deployment, not just a local demo.
+The deployed Streamlit app talks to the deployed API over the internet i.e. it is not running locally and does not fall back to localhost. This is a fully hosted, end-to-end deployment, not just a local demo.
 
 > **Note:** the API is served over plain HTTP on a specific port rather than a domain with HTTPS. This is a deliberate simplification for a portfolio project — see [Limitations](#limitations).
 
@@ -157,11 +157,11 @@ This is the same image running on the deployed EC2 instance.
 
 ## Deployment
 
-### API — AWS EC2
+### API -> AWS EC2
 
 The FastAPI service runs in a Docker container on an EC2 instance, exposed on port 8000. The instance's security group allows inbound traffic on that port so the deployed Streamlit app (and anyone else) can reach it.
 
-### Frontend — Streamlit Community Cloud
+### Frontend -> Streamlit Community Cloud
 
 The Streamlit app is deployed directly from this GitHub repository, with `frontend/app.py` as the entry point. Its `API_URL` is set as a Streamlit secret pointing at the EC2 API above, so the live app always calls the live API — never localhost.
 
@@ -187,11 +187,11 @@ The Streamlit app is deployed directly from this GitHub repository, with `fronte
 | `weight`     | float   | kilograms, greater than 0                                                                     |
 | `height`     | float   | meters, greater than 0 and less than 2.5                                                      |
 | `income_lpa` | float   | annual income in lakhs per annum, greater than 0                                              |
-| `smoker`     | boolean |                                                                                               |
+| `smoker`     | boolean | either True or False                                                                          |
 | `city`       | string  | any city name; matched against the tier lists after trimming and title-casing, unknown cities count as Tier 3 |
 | `occupation` | string  | one of `retired`, `freelancer`, `student`, `government_job`, `business_owner`, `unemployed`, `private_job` |
 
-**Example**
+**Example (when you hit '/docs' endpoint)**
 
 ```bash
 curl -X POST http://13.60.16.138:8000/predict \
@@ -256,7 +256,6 @@ These features, together with `income_lpa` and `occupation`, go into a scikit-le
 - [x] Deploy the API (AWS EC2) and the frontend (Streamlit Community Cloud)
 - [ ] Put the API behind HTTPS with a custom domain
 - [ ] Train and evaluate on a larger dataset
-- [ ] Run the tests automatically with GitHub Actions
 
 ## Author
 

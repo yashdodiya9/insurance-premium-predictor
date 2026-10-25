@@ -22,9 +22,8 @@ class PredictionLog(Base):
     __tablename__ = "prediction_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc),
+                                                 index=True)
     # inputs (the engineered features the model actually sees)
     age: Mapped[int] = mapped_column(Integer)
     bmi: Mapped[float] = mapped_column(Float)

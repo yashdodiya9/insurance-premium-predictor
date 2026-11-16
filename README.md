@@ -13,10 +13,11 @@ A machine learning API that predicts whether a customer falls into a **Low**, **
 - **Health endpoint** reporting API status, model version and whether the model is loaded
 - **Automated tests** with pytest, a **Dockerfile**, and deployment to AWS EC2 (API) and Streamlit Community Cloud (frontend)
 - **Streamlit frontend** that shows the prediction, confidence and a probability chart, pointed at the live API via a configurable `API_URL`
+- **Prediction logging and analytics**: every prediction can be stored in PostgreSQL (SQLAlchemy) after the response is sent, with a `/stats` endpoint and SQL analytics in `sql/analytics.sql`. Logging is optional and never affects `/predict`
 
 ## Tech stack
 
-Python 3.12, FastAPI, Pydantic v2, scikit-learn, pandas, Streamlit, pytest, Docker, AWS EC2, Streamlit Community Cloud, uv
+Python 3.12, FastAPI, Pydantic v2, scikit-learn, pandas, PostgreSQL, SQLAlchemy, Streamlit, pytest, Docker, AWS EC2, Streamlit Community Cloud, uv
 
 ## Architecture
 
@@ -36,6 +37,7 @@ The frontend reads the API's address from an `API_URL` secret/environment variab
 .
 ├── app/
 │   ├── main.py                      # FastAPI app and endpoints
+│   ├── db.py                        # Optional PostgreSQL prediction logging and /stats aggregate
 │   ├── features.py                  # Feature engineering shared by training and serving
 │   ├── config/city_tier.py          # Tier 1 / Tier 2 city lists
 │   ├── schema/
@@ -46,6 +48,7 @@ The frontend reads the API's address from an `API_URL` secret/environment variab
 │       ├── model.pkl                # Trained scikit-learn pipeline (created by train.py)
 │       └── metrics.json             # Cross-validation and test results (created by train.py)
 ├── train.py                         # Trains, compares and exports the model
+├── sql/analytics.sql                # Analytics queries over the prediction_logs table
 ├── frontend/app.py                  # Streamlit UI (points at API_URL)
 ├── tests/                           # pytest test suite
 ├── data/insurance.csv               # Training data
@@ -105,6 +108,47 @@ By default it talks to `http://127.0.0.1:8000`. To point it at the deployed API 
 API_URL=http://13.60.16.138:8000 uv run streamlit run frontend/app.py
 ```
 
+## Prediction logging and analytics
+
+The API can store every prediction in PostgreSQL. It is **optional**: if `DATABASE_URL` is not set (local dev, tests, Render), logging is disabled and the API behaves as before.
+
+- Each `/predict` call writes one row to `prediction_logs` **after the response is sent** (FastAPI background task). A database failure is logged and swallowed, so it can never break a prediction.
+- Stored per row: `created_at`, `age`, `bmi`, `age_grp`, `lifestyle_risk`, `city_tier`, `income_lpa`, `occupation`, `predicted_category`, `confidence`, `model_version`. No names or identifiers are collected.
+- The table is created on startup (`init_db()` in `app/db.py`).
+- The **live deployment logs to AWS RDS PostgreSQL**.
+
+Enable it locally:
+
+```bash
+export DATABASE_URL=postgresql://user:password@host:5432/dbname
+uv run uvicorn app.main:app --reload
+```
+
+### `GET /stats`
+
+Returns totals aggregated in SQL (`503` if the database is not configured):
+
+```json
+{
+  "total_predictions": 42,
+  "by_category": {
+    "Low": {"count": 15, "avg_confidence": 0.7123},
+    "Medium": {"count": 12, "avg_confidence": 0.6541},
+    "High": {"count": 15, "avg_confidence": 0.8012}
+  }
+}
+```
+
+### SQL analytics
+
+`sql/analytics.sql` has five queries over `prediction_logs`: category mix with share of total (`SUM(...) OVER ()`), category by city tier (`COUNT(*) FILTER`), BMI and income by lifestyle risk (`HAVING`), daily volume with a running total (`date_trunc` + window function), and low-confidence predictions ranked within each category (`RANK() OVER (PARTITION BY ...)`).
+
+```bash
+psql "$DATABASE_URL" -f sql/analytics.sql
+```
+
+> Rows come from demo visitors, so these analytics describe demo traffic, not real customers.
+
 ## Training and evaluation
 
 Train (or retrain) the model with:
@@ -142,7 +186,7 @@ On the 20-row held-out test set the selected model scored 0.80 accuracy and 0.78
 uv run pytest
 ```
 
-The suite covers the feature-engineering rules (including boundary values), the model's output shape and probabilities, the training pipeline end to end, and the API (success, validation errors, and the generic 500 response).
+The suite covers the feature-engineering rules (including boundary values), the model's output shape and probabilities, the training pipeline end to end, the API (success, validation errors, and the generic 500 response), and the database logging layer (`tests/test_db.py`).
 
 ## Docker
 
@@ -151,6 +195,7 @@ Build and run the API in a container:
 ```bash
 docker build -t insurance-api .
 docker run --rm -p 8000:8000 insurance-api
+To enable prediction logging in the container, pass `-e DATABASE_URL=postgresql://...` to `docker run`.
 ```
 
 This is the same image running on the deployed EC2 instance.
